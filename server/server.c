@@ -18,7 +18,7 @@
 static unsigned int client_count = 0; // Global client count
 static int uid = 10;
 
-/* Client structure */
+// Client structure
 typedef struct {
   struct sockaddr_in addr; // Client remote address
   int connect_fd;	   // Connection file descriptor
@@ -130,104 +130,46 @@ void print_client_addr(struct sockaddr_in addr){
 
 // Handle all communication with the client
 // Called from each new thread
+// passes in a client_t
 void *handle_client(void *arg){
 
   char buffer_out[MESSAGE_BUFFER];
   char buffer_in[MESSAGE_BUFFER];
-  int rlen;
+  int return_size;
 
-  client_count++;
-  client_t *cli = (client_t *)arg;
+  client_count++; // global count
+  client_t *cli = (client_t *)arg; // safely type cast
 
-  printf("<<ACCEPT ");
   print_client_addr(cli->addr);
-  printf(" REFERENCED BY %d\n", cli->uid);
+  printf(" has connected with uid: %d\n", cli->uid);
 
-  sprintf(buffer_out, "<<JOIN, HELLO %s\r\n", cli->name);
+  // TODO: send welcome message?
+  sprintf(buffer_out, "%s joined!\r\n", cli->name);
   send_message_all(buffer_out);
 
-  /* Receive input from client */
-  while((rlen = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0){
-    buffer_in[rlen] = '\0';
+  // Receive input from client
+  while((return_size = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0){
+    buffer_in[return_size] = '\0';
     buffer_out[0] = '\0';
     strip_newline(buffer_in);
 
-    /* Ignore empty buffer */
-    if(!strlen(buffer_in)){
-      continue;
-    }
+    // Ignore empty buffer
+    if( !strlen(buffer_in) ) { continue; }
 	
-    /* Special options */
-    if(buffer_in[0] == '\\'){
-      char *command, *param;
-      command = strtok(buffer_in," ");
-      if(!strcmp(command, "\\QUIT")){
-	break;
-      }else if(!strcmp(command, "\\PING")){
-	send_message_self("<<PONG\r\n", cli->connect_fd);
-      }else if(!strcmp(command, "\\NAME")){
-	param = strtok(NULL, " ");
-	if(param){
-	  char *old_name = strdup(cli->name);
-	  strcpy(cli->name, param);
-	  sprintf(buffer_out, "<<RENAME, %s TO %s\r\n", old_name, cli->name);
-	  free(old_name);
-	  send_message_all(buffer_out);
-	}else{
-	  send_message_self("<<NAME CANNOT BE NULL\r\n", cli->connect_fd);
-	}
-      }else if(!strcmp(command, "\\PRIVATE")){
-	param = strtok(NULL, " ");
-	if(param){
-	  int uid = atoi(param);
-	  param = strtok(NULL, " ");
-	  if(param){
-	    sprintf(buffer_out, "[PM][%s]", cli->name);
-	    while(param != NULL){
-	      strcat(buffer_out, " ");
-	      strcat(buffer_out, param);
-	      param = strtok(NULL, " ");
-	    }
-	    strcat(buffer_out, "\r\n");
-	    send_message_client(buffer_out, uid);
-	  }else{
-	    send_message_self("<<MESSAGE CANNOT BE NULL\r\n", cli->connect_fd);
-	  }
-	}else{
-	  send_message_self("<<REFERENCE CANNOT BE NULL\r\n", cli->connect_fd);
-	}
-      }else if(!strcmp(command, "\\ACTIVE")){
-	sprintf(buffer_out, "<<CLIENTS %d\r\n", client_count);
-	send_message_self(buffer_out, cli->connect_fd);
-	send_active_clients(cli->connect_fd);
-      }else if(!strcmp(command, "\\HELP")){
-	strcat(buffer_out, "\\QUIT     Quit chatroom\r\n");
-	strcat(buffer_out, "\\PING     Server test\r\n");
-	strcat(buffer_out, "\\NAME     <name> Change nickname\r\n");
-	strcat(buffer_out, "\\PRIVATE  <reference> <message> Send private message\r\n");
-	strcat(buffer_out, "\\ACTIVE   Show active clients\r\n");
-	strcat(buffer_out, "\\HELP     Show help\r\n");
-	send_message_self(buffer_out, cli->connect_fd);
-      }else{
-	send_message_self("<<UNKOWN COMMAND\r\n", cli->connect_fd);
-      }
-    }else{
-      /* Send message */
-      sprintf(buffer_out, "[%s] %s\r\n", cli->name, buffer_in);
-      send_message(buffer_out, cli->uid);
-    }
+    sprintf(buffer_out, "[%s] %s\r\n", cli->name, buffer_in);
+    send_message_self(buffer_out, cli->connfd);
+
   }
 
-  /* Close connection */
+  // Close connection
   close(cli->connect_fd);
-  sprintf(buffer_out, "<<LEAVE, BYE %s\r\n", cli->name);
+  sprintf(buffer_out, "%s left!\r\n", cli->name);
   send_message_all(buffer_out);
 
-  /* Delete client from queue and yeild thread */
+  // Delete client from queue and yeild thread
   queue_delete(cli->uid);
-  printf("<<LEAVE ");
   print_client_addr(cli->addr);
-  printf(" REFERENCED BY %d\n", cli->uid);
+  printf(" left and freed uid: %d\n", cli->uid);
   free(cli);
   client_count--;
   pthread_detach(pthread_self());
