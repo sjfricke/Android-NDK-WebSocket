@@ -157,7 +157,7 @@ void *handle_client(void *arg){
     if( !strlen(buffer_in) ) { continue; }
 	
     sprintf(buffer_out, "[%s] %s\r\n", cli->name, buffer_in);
-    send_message_self(buffer_out, cli->connfd);
+    send_message_self(buffer_out, cli->connect_fd);
 
   }
 
