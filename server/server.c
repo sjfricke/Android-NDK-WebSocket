@@ -18,10 +18,14 @@
 
 #define MAX_CLIENTS 16
 #define DEFAULT_PORT 5000
-#define MESSAGE_BUFFER 1024
+#define MAX_MESSAGE_BUFFER 1024
+#define MAX_MESSAGE_KEYS 16
 
 static unsigned int client_count = 0; // Global client count
 static int uid = 10;
+
+char **message_map; // used to map messages by int in a 2D array 
+pthread_mutex_t message_map_lock;
 
 // Flag global variables
 struct arguments {
@@ -180,16 +184,6 @@ void send_active_clients(int connect_fd){
 	}
 }
 
-// Strips all new line and carriage returns
-void strip_newline(char* current_char){
-  while ( *current_char != '\0' ) {
-    if ( *current_char == '\r' || *current_char == '\n' ) {
-      *current_char = '\0'; // TODO: best char to set too? More edge cases?
-    }
-    current_char++;
-  }
-}
-
 // Print ip address
 void print_client_addr(struct sockaddr_in addr){
   printf("%d.%d.%d.%d",
@@ -204,10 +198,15 @@ void print_client_addr(struct sockaddr_in addr){
 // passes in a client_t
 void *handle_client(void *arg){
 
-  char buffer_out[MESSAGE_BUFFER];
-  char buffer_in[MESSAGE_BUFFER];
+  char buffer_out[MAX_MESSAGE_BUFFER];
+  char buffer_in[MAX_MESSAGE_BUFFER];
+  char *message_key_token;
+  int message_key;
+  char *message_options;
+  char *message_body;
   int return_size;
-
+  char *end_ptr;
+  
   client_count++; // global count
   client_t *cli = (client_t *)arg; // safely type cast
 
@@ -220,14 +219,44 @@ void *handle_client(void *arg){
 
   // Receive input from client
   while((return_size = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0){
-    buffer_in[return_size] = '\0';
+    buffer_in[return_size] = '\0'; // caps off anything larger then max buffer size
     buffer_out[0] = '\0';
-    strip_newline(buffer_in);
 
     // Ignore empty buffer
-    if( !strlen(buffer_in) ) { continue; }
-	
-    sprintf(buffer_out, "%s: %s\r\n", cli->name, buffer_in);
+    if( strlen(buffer_in) <= 1 ) { continue; }
+    printf("\nbuffer_in length: %d\n",(int)strlen(buffer_in));
+    
+    message_key_token = strtok(buffer_in, "\n"); // gets int key value
+    message_options = strtok(NULL, "\n"); // gets options
+    message_body = strtok (NULL, "\0"); // gets actual message value
+    
+    printf("key_token: %s\n", message_key_token);
+    printf("option: %s\n", message_options);
+    printf("body: %s\n", message_body);
+
+    //if (message_key_token == NULL) {  }
+    
+    message_key = strtol(message_key_token, &end_ptr, 10);
+    printf("message_key: %d\n", message_key);
+    if (errno == ERANGE || message_key_token == end_ptr || message_key < 0 || message_key > MAX_MESSAGE_KEYS) {
+      sprintf(buffer_out, "Invalid message map key\nshould be between 0 and %d", MAX_MESSAGE_KEYS);
+      send_message_self(buffer_out, cli->connect_fd);
+      continue; 
+    }
+
+    if (message_options != NULL) { } //TODO
+
+    if (message_body == NULL) {
+      sprintf(buffer_out, "Invalid message body");
+      send_message_self(buffer_out, cli->connect_fd);
+      continue; 
+    }
+    
+    pthread_mutex_lock(&message_map_lock);
+    *message_map[message_key] = *message_body;
+    pthread_mutex_unlock(&message_map_lock);
+    
+    sprintf(buffer_out, "%d\n%s\r\n", message_key, message_body); // used body instead of map too prevent another mutex lock
     //send_message_self(buffer_out, cli->connect_fd);
     send_message_all(buffer_out);
 
@@ -258,16 +287,26 @@ int main(int argc, char *argv[]){
   pthread_t tid;
   socklen_t client_size = sizeof(client_addr);
   struct arguments arguments;
+  int i; // for loop var
   
   ///////////
   // SETUP //
   ///////////
-
+  
   // Default values
   arguments.VERBOSE = 0;
   arguments.PORT = DEFAULT_PORT;
   
   argp_parse (&argp, argc, argv, 0, 0, &arguments);
+
+  // Allocate the message map
+  message_map = malloc( MAX_MESSAGE_KEYS * sizeof(char*) );
+  if (message_map == NULL) { error("Failed to allocate the message_map"); }
+  for (i = 0 ; i < MAX_MESSAGE_KEYS ; i++) {
+    message_map[i] = malloc( MAX_MESSAGE_BUFFER * sizeof(char) );
+    if (message_map[i] == NULL) { error("Failed to allocate the message_map"); }
+    *message_map[i] = (char) 0; // so we know if its the first time someone is writing to value
+  }
   
   // Socket settings
   server_addr.sin_family = AF_INET; // sets to use IP

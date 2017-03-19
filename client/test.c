@@ -46,7 +46,8 @@ int main(int argc, char**argv) {
   char buffer[MESSAGE_BUFFER]; 
   char * server_IP;
   pthread_t rThread;
-
+  char test[] = "4\n0\nred";
+  
   if (argc < 2) { error("usage: client < ip address >\n"); }
 
   //TODO: add IP check
@@ -84,7 +85,8 @@ int main(int argc, char**argv) {
 
   // loops for message input
   while (fgets(buffer, MESSAGE_BUFFER, stdin) != NULL) {
-    status = sendto(socket_fd, buffer, MESSAGE_BUFFER, 0, (struct sockaddr *) &server_addr, sizeof(server_addr));  
+    //    status = sendto(socket_fd, buffer, MESSAGE_BUFFER, 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+    status = sendto(socket_fd, test, MESSAGE_BUFFER, 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (status < 0) {  
       printf("Error sending data!\n\t-%s", buffer);  
     }
