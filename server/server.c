@@ -12,16 +12,23 @@
 #include <argp.h> // used for command line arguments
 #include <stdint.h> // platform agnostic variable type
 
+//////////////////
+// GLOBAL SETUP //
+//////////////////
+
 #define MAX_CLIENTS 16
 #define DEFAULT_PORT 5000
 #define MESSAGE_BUFFER 1024
 
-// Flag global variables
-static uint8_t _VERBOSE = 0;
-
 static unsigned int client_count = 0; // Global client count
 static int uid = 10;
 
+// Flag global variables
+struct arguments {
+  uint8_t VERBOSE;
+  uint16_t PORT; // Default port
+};
+  
 // Client structure
 typedef struct {
   struct sockaddr_in addr; // Client remote address
@@ -30,6 +37,7 @@ typedef struct {
   char name[32];	   // Client name
 } client_t;
 
+// Stack declaration, TODO: move to heap
 client_t *clients[MAX_CLIENTS];
 
 // wrapper for throwing error
@@ -37,6 +45,65 @@ void error(const char *msg) {
   perror(msg);
   exit(1);
 }
+
+// Program documentation
+static char doc[] = "Android-NDK-WebSocket Server -- server part of the WebSocket";
+
+//arguments we accept.
+static char args_doc[] = "TODO";
+
+// The options we understand
+static struct argp_option options[] = {
+  {"verbose",  'v', 0,      0,  "Produce verbose output" },
+  {"port",     'p', "PORT", 0,  "Port to use [Default: 5000]" },
+  { 0 }
+};
+
+// Parse a single option
+static error_t parse_opt (int key, char *arg, struct argp_state *state)
+{
+  // Get the input argument from argp_parse, which we know is a pointer to our arguments structure
+  struct arguments *arguments = state->input;
+
+  switch (key)
+    {
+    case 'v':
+      arguments->VERBOSE = 1;
+      break;
+    case 'p':
+      arguments->PORT = atoi(arg);
+      if (arguments->PORT <= 1024) { error("Invalid Port, needs to be 1024 - 65535"); }
+      break;
+ /*
+    case ARGP_KEY_ARG:
+      if (state->arg_num >= 2)
+	// Too many arguments
+	argp_usage (state);
+
+      arguments->args[state->arg_num] = arg;
+
+      break;
+
+    case ARGP_KEY_END:
+      if (state->arg_num < 2)
+	// Not enough arguments
+	argp_usage (state);
+      break;
+ */
+      
+    default:
+      return ARGP_ERR_UNKNOWN;
+    }
+  return 0;
+}
+
+// Our argp parse
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
+
+/////////////////////////////
+// Client Helper Functions //
+/////////////////////////////
 
 // Add client to queue
 void queue_add(client_t *current_client){
@@ -189,29 +256,28 @@ int main(int argc, char *argv[]){
   struct sockaddr_in server_addr;
   struct sockaddr_in client_addr;
   pthread_t tid;
-  int port;
   socklen_t client_size = sizeof(client_addr);
+  struct arguments arguments;
   
   ///////////
   // SETUP //
   ///////////
 
-  // see if passed port in argument
-  if (argc == 2) {
-    port = atoi(argv[1]);
-  } else {
-    port = DEFAULT_PORT;
-  }
+  // Default values
+  arguments.VERBOSE = 0;
+  arguments.PORT = DEFAULT_PORT;
+  
+  argp_parse (&argp, argc, argv, 0, 0, &arguments);
   
   // Socket settings
   server_addr.sin_family = AF_INET; // sets to use IP
   server_addr.sin_addr.s_addr = htonl(INADDR_ANY); // sets our local IP address
-  server_addr.sin_port = htons(port); // sets the server port number 
+  server_addr.sin_port = htons(arguments.PORT); // sets the server port number 
 
   // Create Socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0); // creates IP based TCP socket
   if (socket_fd < 0) { error("ERROR: Opening socket\n"); }
-  else { printf("TCP Socket Created!\n"); }
+  else if (arguments.VERBOSE) { printf("TCP Socket Created!\n"); }
   
   // Bind Socket
   status = bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr));
@@ -220,9 +286,9 @@ int main(int argc, char *argv[]){
   // when daemon is closed there is a delay to make sure all TCP data is propagated
   if (status < 0) {
     printf("ERROR binding socket: %d , possible TIME_WAIT\n", status);
-    printf("USE: netstat -ant|grep %d to find out\n", port);
+    printf("USE: netstat -ant|grep %d to find out\n", arguments.PORT);
     exit(1);
-  } else {
+  } else if (arguments.VERBOSE){
     printf("Socket Binded!\n");
   }
   
@@ -230,7 +296,7 @@ int main(int argc, char *argv[]){
   status = listen(socket_fd, 10);
 
   if (status < 0){ error("Socket listening failed\n"); }
-  else { printf("Server started on port %d!\n", port); }
+  else { printf("Server started on port %d!\n", arguments.PORT); }
 
   ///////////////////
   // Accept Daemon //
