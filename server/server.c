@@ -1,5 +1,4 @@
 // gcc -Wall -Werror server.c -O2 -lpthread -o server
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -10,10 +9,15 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <argp.h> // used for command line arguments
+#include <stdint.h> // platform agnostic variable type
 
 #define MAX_CLIENTS 16
 #define DEFAULT_PORT 5000
 #define MESSAGE_BUFFER 1024
+
+// Flag global variables
+static uint8_t _VERBOSE = 0;
 
 static unsigned int client_count = 0; // Global client count
 static int uid = 10;
@@ -156,8 +160,9 @@ void *handle_client(void *arg){
     // Ignore empty buffer
     if( !strlen(buffer_in) ) { continue; }
 	
-    sprintf(buffer_out, "[%s] %s\r\n", cli->name, buffer_in);
-    send_message_self(buffer_out, cli->connect_fd);
+    sprintf(buffer_out, "%s: %s\r\n", cli->name, buffer_in);
+    //send_message_self(buffer_out, cli->connect_fd);
+    send_message_all(buffer_out);
 
   }
 
