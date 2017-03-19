@@ -64,9 +64,9 @@ int main(int argc, char**argv) {
   else  printf("Socket created...\n");   
 
   memset(&server_addr, 0, sizeof(server_addr));  
-  server_addr.sin_family = AF_INET;  
-  server_addr.sin_addr.s_addr = inet_addr(server_IP);
-  server_addr.sin_port = port;
+  server_addr.sin_addr.s_addr = inet_addr(server_IP); // sets IP of server
+  server_addr.sin_family = AF_INET; // uses internet address domain
+  server_addr.sin_port = htons(port); // sets PORT on server 
 
   status = connect(socket_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));  
   if (status < 0) { error("Error connecting to the server!\n"); }  
