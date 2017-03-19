@@ -1,4 +1,4 @@
-// gcc -Wall -Werror server.c -O2 -lpthread -o server
+//gcc -Wall -Werror server.c -O2 -lpthread -o server
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -214,7 +214,7 @@ void *handle_client(void *arg){
   printf(" has connected with uid: %d\n", cli->uid);
 
   // TODO: send welcome message?
-  sprintf(buffer_out, "%s joined!\r\n", cli->name);
+  sprintf(buffer_out, "-1\n%s joined!\r\n", cli->name);
   send_message_all(buffer_out);
 
   // Receive input from client
@@ -264,7 +264,7 @@ void *handle_client(void *arg){
 
   // Close connection
   close(cli->connect_fd);
-  sprintf(buffer_out, "%s left!\r\n", cli->name);
+  sprintf(buffer_out, "-1\n%s left!\r\n", cli->name);
   send_message_all(buffer_out);
 
   // Delete client from queue and yeild thread

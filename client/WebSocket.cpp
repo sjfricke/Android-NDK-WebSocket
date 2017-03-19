@@ -40,9 +40,9 @@ int WebSocket::connectSocket( std::string ip, int port ) {
 int WebSocket::broadcast( int key, int option, std::string message ) {
   int status;
 
-  char test[] = "4\n0\ntest message";
+  sprintf(msg_buffer_out,"%d\n%d\n%s", key, option, message.c_str());
   
-  status = sendto(socket_fd, test, MAX_MESSAGE_BUFFER, 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
+  status = sendto(socket_fd, msg_buffer_out, MAX_MESSAGE_BUFFER, 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
   if (status < 0) {
     printf("sendto() ERROR"); return 1;
   } else {
@@ -73,7 +73,6 @@ void* WebSocket::messageThread( void* socket ) {
     else {
       msg_body = msg_buffer_in;
       std::cout << msg_body << std::endl;
-      std::cout << "recvfrom: " << status << std::endl;
     }
   }
 }

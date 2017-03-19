@@ -33,7 +33,7 @@ class WebSocket {
 
     struct sockaddr_in server_addr; // socket struct object
     int socket_fd;                  // holds socket file discriptor
-    std::string msg_buffer_out;     // outgoing messages
+    char msg_buffer_out[MAX_MESSAGE_BUFFER];     // outgoing messages
     pthread_t receive_thread;       // thread to block for messages
 
     // runs a seperate thread to wait for incoming request
