@@ -29,7 +29,9 @@ int WebSocket::connectSocket( std::string ip, int port ) {
 
   status = pthread_create(&receive_thread, NULL, messageThread, (void*)(intptr_t) socket_fd);
   if (status) { printf("pthreadCreate() ERROR"); return 3; }
+  else if (status == -1) { printf("socket closed"); return 4; }
 
+  printf("end connect, %d\n", status);
   return 0;
 }
 
@@ -60,11 +62,18 @@ void* WebSocket::messageThread( void* socket ) {
   socket_fd = (intptr_t) socket;
 
   for(;;) {
+    memset(&msg_buffer_in, 0, MAX_MESSAGE_BUFFER);
     status = recvfrom(socket_fd , msg_buffer_in, MAX_MESSAGE_BUFFER, 0, NULL, NULL);
-    if (status < 0) { printf("recvfrom() ERROR"); }
+    // 0 is used for when server closes... server should always return at least 1 byte
+    if (status <= 0) {
+      printf("recvfrom() ERROR");
+      close(socket_fd);
+      return (void*) -1; // returns error
+    }
     else {
       msg_body = msg_buffer_in;
       std::cout << msg_body << std::endl;
+      std::cout << "recvfrom: " << status << std::endl;
     }
   }
 }

@@ -1,6 +1,7 @@
 #ifndef ANDROID_NDK_WEBSOCKET_H
 #define ANDROID_NDK_WEBSOCKET_H
 
+#include <cstring>
 #include <string>
 #include <stdlib.h>
 #include <sys/types.h>
