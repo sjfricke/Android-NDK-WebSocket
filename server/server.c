@@ -213,8 +213,8 @@ void *handle_client(void *arg){
   print_client_addr(cli->addr);
   printf(" has connected with uid: %d\n", cli->uid);
 
-  // TODO: send welcome message?
-  sprintf(buffer_out, "-1\n%s joined!\r\n", cli->name);
+  // send join with uid
+  sprintf(buffer_out, "-1\n%d\r\n", cli->uid);
   send_message_all(buffer_out);
 
   // Receive input from client
@@ -264,8 +264,9 @@ void *handle_client(void *arg){
   }
 
   // Close connection
+  // send leave event to client
   close(cli->connect_fd);
-  sprintf(buffer_out, "-1\n%s left!\r\n", cli->name);
+  sprintf(buffer_out, "-2\n%d\r\n", cli->uid);
   send_message_all(buffer_out);
 
   // Delete client from queue and yeild thread

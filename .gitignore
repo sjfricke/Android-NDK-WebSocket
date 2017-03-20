@@ -1,6 +1,7 @@
 # Project Specific Exe files
 server/server
 client/test
+test2
 
 # Prerequisites
 *.d

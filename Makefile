@@ -13,3 +13,4 @@ Client:
 clean:
 	rm server/server
 	rm client/test
+	rm test2

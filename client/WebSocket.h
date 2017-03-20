@@ -37,10 +37,22 @@ class WebSocket {
     // sets up a event listener by passing the function and message key to map it to
     // returns 0 on success
     int setEvent(int key, void (*callbackFunction)(char*));
+
+    // called on key == -1
+    // passes in uid of client
+    // returns 0 on success
+    int setJoinEvent(void (*callbackFunction)(int));
+
+    // called on key == -2
+    // passes in uid of client
+    // returns 0 on success
+    int setLeaveEvent(void (*callbackFunction)(int));
     
  private:
 
     event_map_t response_map[16]; // TODO, allocate during construction
+    void (*on_join)(int);	  // when key == -1 
+    void (*on_leave)(int);        // when key == -2
     
     struct sockaddr_in server_addr; // socket struct object
     int socket_fd;                  // holds socket file discriptor

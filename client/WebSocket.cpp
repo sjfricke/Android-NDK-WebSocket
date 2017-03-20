@@ -5,6 +5,10 @@
 
 WebSocket::WebSocket() {
   max_message_keys = 16;
+
+  // set NULL to know later if they have been set or not
+  on_join = NULL;
+  on_leave = NULL;
 }
 
 WebSocket::~WebSocket() {
@@ -78,32 +82,68 @@ void WebSocket::messageThread( ) {
       message_body = strtok(NULL, "\0");
 
       message_key = strtol(message_key_token, &end_ptr, 10);
-      if (errno == ERANGE || message_key_token == end_ptr || message_key < -1 || message_key > max_message_keys) {
+      if (errno == ERANGE || message_key_token == end_ptr || message_key < -2 || message_key > max_message_keys) {
 	// if key_token == end_ptr means its empty
-	// message_key can be -1 for join/leave ack
+	// message_key can be -1/-2 for join/leave ack
 	printf("TODO: Invalid receive message\n");
 	continue; 
       }
 
-      // -1 key reserved for join/leaves
+      // -1 key reserved for join
+      // -2 key reserved for leave
       if (message_key == -1) {
-	printf("ROOM UPDATE: %s\n", message_body);
-      }
 
-      if (message_key > 0 && message_key < 3) { 
-      response_map[message_key](message_body);
+	if (*on_join == NULL)  continue; } // on_join not set
+	
+	int uid = strtol(message_body, &end_ptr, 10);
+	if (errno == ERANGE || message_key_token == end_ptr || uid < 0) {
+	  // should not have negative uid
+	  printf("TODO: Invalid join message\n");
+	  continue; 
+	} else {
+	  // valid uid
+	  (*on_join)(uid);
+	}
+	
+	
+      } else if (message_key == -2) {
+
+      	if (*on_leave == NULL)  continue; } // on_leave not set
+
+	int uid = strtol(message_body, &end_ptr, 10);
+	if (errno == ERANGE || message_key_token == end_ptr || uid < 0) {
+	  // should not have negative uid
+	  printf("TODO: Invalid join message\n");
+	  continue; 
+	} else {
+	  // valid uid
+	  (*on_leave)(uid);
+	}
+	
+      } else if (message_key >= 0 && message_key < max_message_keys ) { 
+	  response_map[message_key](message_body);
       }
       
-      printf("TEST: key: %d\nbody: %s", message_key, message_body);
+      //      printf("TEST: key: %d\nbody: %s", message_key, message_body);
       
     }
   } // infinite for loop
 }
 
 int WebSocket::setEvent(int key, void (*callbackFunction)(char*)) {
-  printf("starting setEvent\n");
   response_map[key] = callbackFunction;
-  printf("done with event %d\n", key);
   return 0;
   // error check TODO
+}
+
+int WebSocket::setJoinEvent(void (*callbackFunction)(int)) {
+  on_join = callbackFunction;
+  return 0;
+  // TODO error check
+}
+
+int WebSocket::setLeaveEvent(void (*callbackFunction)(int)) {
+  on_leave = callbackFunction;
+  return 0;
+  // TODO error check
 }

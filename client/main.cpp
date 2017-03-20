@@ -11,6 +11,9 @@ void on_new_type(char* body) {
   printf("New type: %s", body);
 }
 
+void onJoin(int uid){ printf("Join: %d\n", uid); }
+void onLeave(int uid){ printf("Leave: %d\n", uid); }
+
 int main() {
 
   WebSocket client_socket;
@@ -21,6 +24,8 @@ int main() {
 
   client_socket.setEvent(1, on_new_type);
   client_socket.setEvent(2, on_new_color);
+  client_socket.setJoinEvent(onJoin);
+  client_socket.setLeaveEvent(onLeave);
   
   string s;
   string p;
