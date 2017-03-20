@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define MAX_MESSAGE_BUFFER 1024
 
@@ -36,8 +37,10 @@ class WebSocket {
     char msg_buffer_out[MAX_MESSAGE_BUFFER];     // outgoing messages
     pthread_t receive_thread;       // thread to block for messages
 
+    int max_message_keys;
+    
     // runs a seperate thread to wait for incoming request
-    static void* messageThread(void* socket);
+    void* messageThread(void* socket);
     
 };
 

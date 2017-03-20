@@ -3,7 +3,9 @@
 #include <stdio.h> //TODO:  remove with debugging class
 #include <iostream>
 
-WebSocket::WebSocket() { }
+WebSocket::WebSocket() {
+  max_message_keys = 16;
+}
 
 WebSocket::~WebSocket() {
   //server_addr = NULL; // prevents old info from being saved
@@ -18,18 +20,18 @@ int WebSocket::connectSocket( std::string ip, int port ) {
   int status; // used to check status returns
   
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (socket_fd < 0) { printf("socket() ERROR"); return 1; }
+  if (socket_fd < 0) { printf("socket() ERROR\n"); return 1; }
 
   server_addr.sin_addr.s_addr = inet_addr(ip.c_str()); // sets IP of server
   server_addr.sin_family = AF_INET; // uses internet address domain
   server_addr.sin_port = htons(port); // sets PORT on server
 
   status = connect(socket_fd, (struct sockaddr*) &server_addr, sizeof(server_addr));
-  if (status < 0) { printf("connect() ERROR"); return 2; }
+  if (status < 0) { printf("connect() ERROR\n"); return 2; }
 
   status = pthread_create(&receive_thread, NULL, messageThread, (void*)(intptr_t) socket_fd);
-  if (status) { printf("pthreadCreate() ERROR"); return 3; }
-  else if (status == -1) { printf("socket closed"); return 4; }
+  if (status) { printf("pthreadCreate() ERROR\n"); return 3; }
+  else if (status == -1) { printf("socket closed\n"); return 4; }
 
   printf("end connect, %d\n", status);
   return 0;
@@ -44,7 +46,7 @@ int WebSocket::broadcast( int key, int option, std::string message ) {
   
   status = sendto(socket_fd, msg_buffer_out, MAX_MESSAGE_BUFFER, 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
   if (status < 0) {
-    printf("sendto() ERROR"); return 1;
+    printf("sendto() ERROR\n"); return 1;
   } else {
     return 0;
   }
@@ -52,27 +54,50 @@ int WebSocket::broadcast( int key, int option, std::string message ) {
 
 void* WebSocket::messageThread( void* socket ) {
 
-  printf("message thread started");
+  printf("message thread started\n");
 
   int socket_fd;
   int status;
-  char msg_buffer_in[MAX_MESSAGE_BUFFER];
-  std::string msg_body;
-  
+  char message_buffer_in[MAX_MESSAGE_BUFFER];
+
+  // for the pasring
+  char *message_body;
+  char *message_key_token;
+  int message_key;
+  char *end_ptr;
+
+  // safe type cast back from void* cause threads only take void*
   socket_fd = (intptr_t) socket;
 
   for(;;) {
-    memset(&msg_buffer_in, 0, MAX_MESSAGE_BUFFER);
-    status = recvfrom(socket_fd , msg_buffer_in, MAX_MESSAGE_BUFFER, 0, NULL, NULL);
+    memset(&message_buffer_in, 0, MAX_MESSAGE_BUFFER);
+    status = recvfrom(socket_fd, message_buffer_in, MAX_MESSAGE_BUFFER, 0, NULL, NULL);
     // 0 is used for when server closes... server should always return at least 1 byte
     if (status <= 0) {
-      printf("recvfrom() ERROR");
+      printf("recvfrom() ERROR\n");
       close(socket_fd);
       return (void*) -1; // returns error
+    } else {
+
+      // Parse message and validate
+      message_key_token = strtok(message_buffer_in,"\n");
+      message_body = strtok(NULL, "\0");
+
+      message_key = strtol(message_key_token, &end_ptr, 10);
+      if (errno == ERANGE || message_key_token == end_ptr || message_key < -1 || message_key > max_message_keys) {
+	// if key_token == end_ptr means its empty
+	// message_key can be -1 for join/leave ack
+	printf("TODO: Invalid receive message\n");
+	continue; 
+      }
+
+      // -1 key reserved for join/leaves
+      if (message_key == -1) {
+	printf("ROOM UPDATE: %s\n", message_body);
+      }
+
+      printf("TEST: key: %d\nbody: %s", message_key, message_body);
+      
     }
-    else {
-      msg_body = msg_buffer_in;
-      std::cout << msg_body << std::endl;
-    }
-  }
+  } // infinite for loop
 }

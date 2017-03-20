@@ -234,6 +234,7 @@ void *handle_client(void *arg){
     printf("option: %s\n", message_options);
     printf("body: %s\n", message_body);
 
+    // TODO: can strtol handle if its NULL already cause this check is redundent
     //if (message_key_token == NULL) {  }
     
     message_key = strtol(message_key_token, &end_ptr, 10);

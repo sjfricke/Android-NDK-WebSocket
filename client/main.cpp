@@ -3,6 +3,8 @@
 
 using namespace std;
 
+void on_new_color() {}
+
 int main() {
 
   WebSocket client_socket;
