@@ -8,7 +8,7 @@ Server:
 
 Client:
 	$(CC) client/test.c $(CFLAGS) -lpthread -o client/test
-	g++ client/main.cpp client/WebSocket.cpp -Wall -Werror -lpthread -o test2
+	g++ client/main.cpp client/WebSocket.cpp -Wall -Werror -std=c++11 -pthread -o test2
 
 clean:
 	rm server/server

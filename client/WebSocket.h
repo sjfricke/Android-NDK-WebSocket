@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <thread> // std threads instead of pthreads due to c++ member function issues
 
 #define MAX_MESSAGE_BUFFER 1024
 
@@ -35,12 +36,11 @@ class WebSocket {
     struct sockaddr_in server_addr; // socket struct object
     int socket_fd;                  // holds socket file discriptor
     char msg_buffer_out[MAX_MESSAGE_BUFFER];     // outgoing messages
-    pthread_t receive_thread;       // thread to block for messages
-
     int max_message_keys;
     
+    std::thread rec_thread; 
     // runs a seperate thread to wait for incoming request
-    void* messageThread(void* socket);
+    void messageThread();
     
 };
 

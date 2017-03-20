@@ -10,7 +10,6 @@ WebSocket::WebSocket() {
 WebSocket::~WebSocket() {
   //server_addr = NULL; // prevents old info from being saved
   //close(socket_fd);
-  //pthread_exit(NULL); //TODO: Only the class thread
 }
 
 // used to setup and connect to server
@@ -29,10 +28,8 @@ int WebSocket::connectSocket( std::string ip, int port ) {
   status = connect(socket_fd, (struct sockaddr*) &server_addr, sizeof(server_addr));
   if (status < 0) { printf("connect() ERROR\n"); return 2; }
 
-  status = pthread_create(&receive_thread, NULL, messageThread, (void*)(intptr_t) socket_fd);
-  if (status) { printf("pthreadCreate() ERROR\n"); return 3; }
-  else if (status == -1) { printf("socket closed\n"); return 4; }
-
+  rec_thread = std::thread(&WebSocket::messageThread, this);
+  
   printf("end connect, %d\n", status);
   return 0;
 }
@@ -52,11 +49,11 @@ int WebSocket::broadcast( int key, int option, std::string message ) {
   }
 }
 
-void* WebSocket::messageThread( void* socket ) {
+void WebSocket::messageThread( ) {
 
   printf("message thread started\n");
 
-  int socket_fd;
+  //  int socket_fd;
   int status;
   char message_buffer_in[MAX_MESSAGE_BUFFER];
 
@@ -66,9 +63,6 @@ void* WebSocket::messageThread( void* socket ) {
   int message_key;
   char *end_ptr;
 
-  // safe type cast back from void* cause threads only take void*
-  socket_fd = (intptr_t) socket;
-
   for(;;) {
     memset(&message_buffer_in, 0, MAX_MESSAGE_BUFFER);
     status = recvfrom(socket_fd, message_buffer_in, MAX_MESSAGE_BUFFER, 0, NULL, NULL);
@@ -76,7 +70,7 @@ void* WebSocket::messageThread( void* socket ) {
     if (status <= 0) {
       printf("recvfrom() ERROR\n");
       close(socket_fd);
-      return (void*) -1; // returns error
+      return;
     } else {
 
       // Parse message and validate
