@@ -15,8 +15,11 @@
 
 #define MAX_MESSAGE_BUFFER 1024
 
-class WebSocket {
+// function pointer array where the message is the passed in arg
+typedef void (*event_map_t)(char*);
 
+class WebSocket {
+  
  public:
     
     // Constructor and destructor
@@ -31,8 +34,14 @@ class WebSocket {
     // returns 0 on success
     int broadcast(int key, int option, std::string message);
 
+    // sets up a event listener by passing the function and message key to map it to
+    // returns 0 on success
+    int setEvent(int key, void (*callbackFunction)(char*));
+    
  private:
 
+    event_map_t response_map[16]; // TODO, allocate during construction
+    
     struct sockaddr_in server_addr; // socket struct object
     int socket_fd;                  // holds socket file discriptor
     char msg_buffer_out[MAX_MESSAGE_BUFFER];     // outgoing messages

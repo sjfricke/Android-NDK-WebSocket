@@ -90,8 +90,20 @@ void WebSocket::messageThread( ) {
 	printf("ROOM UPDATE: %s\n", message_body);
       }
 
+      if (message_key > 0 && message_key < 3) { 
+      response_map[message_key](message_body);
+      }
+      
       printf("TEST: key: %d\nbody: %s", message_key, message_body);
       
     }
   } // infinite for loop
+}
+
+int WebSocket::setEvent(int key, void (*callbackFunction)(char*)) {
+  printf("starting setEvent\n");
+  response_map[key] = callbackFunction;
+  printf("done with event %d\n", key);
+  return 0;
+  // error check TODO
 }

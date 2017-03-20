@@ -3,7 +3,13 @@
 
 using namespace std;
 
-void on_new_color() {}
+void on_new_color(char* body) {
+  printf("New color: %s", body);
+}
+
+void on_new_type(char* body) {
+  printf("New type: %s", body);
+}
 
 int main() {
 
@@ -13,6 +19,9 @@ int main() {
 
   client_socket.connectSocket("192.168.1.105", 5000);
 
+  client_socket.setEvent(1, on_new_type);
+  client_socket.setEvent(2, on_new_color);
+  
   string s;
   string p;
   int n;
