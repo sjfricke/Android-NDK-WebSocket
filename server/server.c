@@ -115,8 +115,11 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 // Client Helper Functions //
 /////////////////////////////
 
-// Add client to queue
-void queue_add(client_t *current_client){
+/*
+ * Add client to queue
+ * @param client struct to add
+ */
+void queue_add(client_t *current_client) {
   int i;
   for ( i=0; i < MAX_CLIENTS; i++ ) {
     if ( !clients[i] ) {
@@ -126,12 +129,15 @@ void queue_add(client_t *current_client){
   }
 }
 
-// Delete client from queue
-void queue_delete(int uid){
+/*
+ * Delete client from queue
+ * @param client uid to delete
+ */
+void queue_delete(int uid) {
   int i;
-  for ( i=0; i < MAX_CLIENTS; i++ ) {
-    if ( clients[i] ) {
-      if ( clients[i]->uid == uid ) {
+  for (i = 0; i < MAX_CLIENTS; i++) {
+    if (clients[i]) {
+      if (clients[i]->uid == uid) {
 	clients[i] = NULL;
 	return;
       }
@@ -139,70 +145,79 @@ void queue_delete(int uid){
   }
 }
 
-/* Send message to all clients but the sender */
-void send_message(char *s, int uid){
-	int i;
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			if(clients[i]->uid != uid){
-				write(clients[i]->connect_fd, s, strlen(s));
-			}
-		}
-	}
+/*
+ * Send message to all clients
+ * @param body of message to send
+ * @param id of sender
+ */
+void send_message_all(char *body, int uid) {
+  int i;
+  for(i = 0; i < MAX_CLIENTS; i++) {
+    // prevent from sending back to sender
+    if(clients[i] && clients[i]->uid != uid) {
+      write(clients[i]->connect_fd, body, strlen(body));
+    }
+  }
 }
 
-/* Send message to all clients */
-void send_message_all(char *s){
-	int i;
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			write(clients[i]->connect_fd, s, strlen(s));
-		}
-	}
+/*
+ * Send message to back to sender
+ * @param body of message to send
+ * @param file descriptor of sender to use to write back
+ */
+void send_message_self(const char *body, int connect_fd) {
+  write(connect_fd, body, strlen(body));
 }
 
-/* Send message to sender */
-void send_message_self(const char *s, int connect_fd){
-	write(connect_fd, s, strlen(s));
+/*
+ * Send message to client
+ * @param body of message to send
+ * @param id of sender
+ */
+void send_message_client(char *body, int uid) {
+  int i;
+  for(i = 0; i < MAX_CLIENTS; i++) {
+    if(clients[i] && clients[i]->uid == uid) {
+	write(clients[i]->connect_fd, body, strlen(body));
+      }
+    }
+  }
 }
 
-/* Send message to client */
-void send_message_client(char *s, int uid){
-	int i;
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			if(clients[i]->uid == uid){
-				write(clients[i]->connect_fd, s, strlen(s));
-			}
-		}
-	}
+/*
+ * Send list of active clients
+ * @param client to send info to
+ */
+void send_active_clients(int connect_fd) {
+  int i;
+  char body[64]; // max size need for now
+  for(i = 0; i < MAX_CLIENTS; i++) {
+    if(clients[i]) {
+      sprintf(body, "Client_uid: %d\tClient_name: %s\n",
+	      clients[i]->uid, clients[i]->name);
+      send_message_self(body, connect_fd);
+    }
+  }
 }
 
-/* Send list of active clients */
-void send_active_clients(int connect_fd){
-	int i;
-	char s[64];
-	for(i=0;i<MAX_CLIENTS;i++){
-		if(clients[i]){
-			sprintf(s, "<<CLIENT %d | %s\r\n", clients[i]->uid, clients[i]->name);
-			send_message_self(s, connect_fd);
-		}
-	}
-}
-
-// Print ip address
-void print_client_addr(struct sockaddr_in addr){
+/*
+ * Print ip address
+ * @param socket struct info
+ */
+void print_client_addr(struct sockaddr_in addr) {
   printf("%d.%d.%d.%d",
-	  addr.sin_addr.s_addr & 0xFF,
+          addr.sin_addr.s_addr & 0xFF,
 	 (addr.sin_addr.s_addr & 0xFF00)>>8,
 	 (addr.sin_addr.s_addr & 0xFF0000)>>16,
 	 (addr.sin_addr.s_addr & 0xFF000000)>>24);
 }
 
-// Handle all communication with the client
-// Called from each new thread
-// passes in a client_t
-void *handle_client(void *arg){
+/*
+ * Handle all communication with the client
+ * Called from each new thread
+ * passes in a client_t
+ */
+void *handle_client(void *arg) {
 
   char buffer_out[MAX_MESSAGE_BUFFER];
   char buffer_in[MAX_MESSAGE_BUFFER];
@@ -224,7 +239,7 @@ void *handle_client(void *arg){
   send_message_all(buffer_out);
 
   // Receive input from client
-  while((return_size = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0){
+  while((return_size = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0) {
     buffer_in[return_size] = '\0'; // caps off anything larger then max buffer size
     buffer_out[0] = '\0';
 
@@ -294,7 +309,10 @@ void *handle_client(void *arg){
   return NULL;
 }
 
-int main(int argc, char *argv[]){
+/* 
+ * Main function
+ */
+int main(int argc, char *argv[]) {
   int socket_fd = 0; // socket file descriptor
   int connect_fd = 0; // used to set new client thread connect_fd
   int status; // used to check status of c functions return values
@@ -343,27 +361,27 @@ int main(int argc, char *argv[]){
     printf("ERROR binding socket: %d , possible TIME_WAIT\n", status);
     printf("USE: netstat -ant|grep %d to find out\n", arguments.PORT);
     exit(1);
-  } else if (arguments.VERBOSE){
+  } else if (arguments.VERBOSE) {
     printf("Socket Binded!\n");
   }
   
   // Listen to Socket
   status = listen(socket_fd, 10);
 
-  if (status < 0){ error("Socket listening failed\n"); }
+  if (status < 0) { error("Socket listening failed\n"); }
   else { printf("Server started on port %d!\n", arguments.PORT); }
 
   ///////////////////
   // Accept Daemon //
   ///////////////////
 
-  while(1){
+  while(1) {
 
     // blocks until client sends connection
     connect_fd = accept(socket_fd, (struct sockaddr*)&client_addr, &client_size);
 
     // Check if max clients is reached
-    if ( (client_count+1) == MAX_CLIENTS ){
+    if ( (client_count+1) == MAX_CLIENTS ) {
       printf("ERROR: \n");
       print_client_addr(client_addr);
       printf(" not connected due to Max Clients Reached\n");
