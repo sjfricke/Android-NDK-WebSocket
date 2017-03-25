@@ -45,6 +45,10 @@ also sent as `4\n0\nred`
 
 This means that all clients are aware that key 4 is used for sending color data. The [Client Section](#client) explains more about how to set it up.
 
+* **NOTE:** Both `-1` and `-2` are reserved for join and leave event respecfully
+  * `-1` gets sent on a join of a client
+  * `-2` gets sent on a leave of a client
+
 ## Client
 
 The client side is a single .cpp file and header that can be added to your CMake or ndk-build in one line.

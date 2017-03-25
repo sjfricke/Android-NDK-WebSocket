@@ -179,7 +179,6 @@ void send_message_client(char *body, int uid) {
   for(i = 0; i < MAX_CLIENTS; i++) {
     if(clients[i] && clients[i]->uid == uid) {
 	write(clients[i]->connect_fd, body, strlen(body));
-      }
     }
   }
 }
@@ -235,8 +234,8 @@ void *handle_client(void *arg) {
   printf(" has connected with uid: %d\n", cli->uid);
 
   // send join with uid
-  sprintf(buffer_out, "-1\n%d\r\n", cli->uid);
-  send_message_all(buffer_out);
+  sprintf(buffer_out, "-1\n%d\n", cli->uid);
+  send_message_all(buffer_out, cli->uid);
 
   // Receive input from client
   while((return_size = read(cli->connect_fd, buffer_in, sizeof(buffer_in)-1)) > 0) {
@@ -245,40 +244,42 @@ void *handle_client(void *arg) {
 
     // Ignore empty buffer
     if( strlen(buffer_in) <= 1 ) { continue; }
-    printf("\nbuffer_in length: %d\n",(int)strlen(buffer_in));
+    if (arguments.VERBOSE) { printf("\nbuffer_in length: %d\n",(int)strlen(buffer_in)); }
     
     message_key_token = strtok(buffer_in, "\n"); // gets int key value
     message_options = strtok(NULL, "\n"); // gets options
     message_body = strtok (NULL, "\0"); // gets actual message value
     
-    printf("key_token: %s\n", message_key_token);
-    printf("option: %s\n", message_options);
-    printf("body: %s\n", message_body);
+    if (arguments.VERBOSE) { printf("key_token: %s\n", message_key_token); }
+    if (arguments.VERBOSE) { printf("option: %s\n", message_options); }
+    if (arguments.VERBOSE) { printf("body: %s\n", message_body); }
 
     // TODO: can strtol handle if its NULL already cause this check is redundent
     //if (message_key_token == NULL) {  }
     
     message_key = strtol(message_key_token, &end_ptr, 10);
-    printf("message_key: %d\n", message_key);
-    printf("MAX_KEYS: %d\n", arguments.MAX_KEYS);
+    if (arguments.VERBOSE) { printf("message_key: %d\n", message_key);}
+    if (arguments.VERBOSE) { printf("MAX_KEYS: %d\n", arguments.MAX_KEYS);}
+    
     if (errno == ERANGE || message_key_token == end_ptr) {
       sprintf(buffer_out, "Invalid message map key as int\n");
       send_message_self(buffer_out, cli->connect_fd);
-      printf("message key not an int");
+      if (arguments.VERBOSE) { printf("ERROR: message key not an int\n"); }
       continue;
       
     } else if (message_key < 0 || message_key > arguments.MAX_KEYS) {
-      sprintf(buffer_out, "Invalid message map key range, should be between 0 and %d", arguments.MAX_KEYS);
+      sprintf(buffer_out, "Invalid message map key range, should be between 0 and %d\n", arguments.MAX_KEYS);
       send_message_self(buffer_out, cli->connect_fd);
-      printf("out of message key range");
+      if (arguments.VERBOSE) { printf("ERROR: out of message key range\n"); }
       continue; 
     }
 
     if (message_options != NULL) { } //TODO
 
     if (message_body == NULL) {
-      sprintf(buffer_out, "Invalid message body");
+      sprintf(buffer_out, "Invalid message body\n");
       send_message_self(buffer_out, cli->connect_fd);
+      if (arguments.VERBOSE) { printf("ERROR: message body == null\n"); }
       continue; 
     }
     
@@ -286,17 +287,17 @@ void *handle_client(void *arg) {
     *message_map[message_key] = *message_body;
     pthread_mutex_unlock(&message_map_lock);
     
-    sprintf(buffer_out, "%d\n%s\r\n", message_key, message_body); // used body instead of map too prevent another mutex lock
+    sprintf(buffer_out, "%d\n%s\n", message_key, message_body); // used body instead of map too prevent another mutex lock
     //send_message_self(buffer_out, cli->connect_fd);
-    send_message_all(buffer_out);
+    send_message_all(buffer_out, cli->uid);
 
   }
 
   // Close connection
   // send leave event to client
   close(cli->connect_fd);
-  sprintf(buffer_out, "-2\n%d\r\n", cli->uid);
-  send_message_all(buffer_out);
+  sprintf(buffer_out, "-2\n%d\n", cli->uid);
+  send_message_all(buffer_out, cli->uid);
 
   // Delete client from queue and yeild thread
   queue_delete(cli->uid);
@@ -335,10 +336,10 @@ int main(int argc, char *argv[]) {
 
   // Allocate the message map
   message_map = malloc( arguments.MAX_KEYS * sizeof(char*) );
-  if (message_map == NULL) { error("Failed to allocate the message_map"); }
+  if (message_map == NULL) { error("ERROR: Failed to allocate the message_map\n"); }
   for (i = 0 ; i < arguments.MAX_KEYS ; i++) {
     message_map[i] = malloc( MAX_MESSAGE_BUFFER * sizeof(char) );
-    if (message_map[i] == NULL) { error("Failed to allocate the message_map"); }
+    if (message_map[i] == NULL) { error("ERROR: Failed to allocate the message_map\n"); }
     *message_map[i] = (char) 0; // so we know if its the first time someone is writing to value
   }
   
@@ -368,7 +369,7 @@ int main(int argc, char *argv[]) {
   // Listen to Socket
   status = listen(socket_fd, 10);
 
-  if (status < 0) { error("Socket listening failed\n"); }
+  if (status < 0) { error("ERROR: Socket listening failed\n"); }
   else { printf("Server started on port %d!\n", arguments.PORT); }
 
   ///////////////////
