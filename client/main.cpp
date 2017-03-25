@@ -11,6 +11,10 @@ void on_new_type(char* body) {
   printf("New type: %s", body);
 }
 
+void on_new_test(char* body) {
+  printf("New test: %s", body);
+}
+
 void onJoin(int uid){ printf("Join: %d\n", uid); }
 void onLeave(int uid){ printf("Leave: %d\n", uid); }
 
@@ -32,11 +36,15 @@ int main() {
   int n;
 
   while (true) {
+    cout << "key: ";
     cin >> s;
     cin >> p;
     n = atoi(s.c_str());
 
-    if (n != -1) {
+    if (n == 5){
+        client_socket.setEvent(3, on_new_test);
+	continue;
+    } else if (n != -1) {
       client_socket.broadcast(n, 0, p);
       continue;
     }

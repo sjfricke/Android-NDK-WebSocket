@@ -3,14 +3,25 @@
 #include <stdio.h> //TODO:  remove with debugging class
 #include <iostream>
 
-WebSocket::WebSocket() {
-  max_message_keys = 16;
+WebSocket::WebSocket(int message_keys) {
 
+  // sets all keys to zero to check for empty keys in future
+  max_message_keys = message_keys;
+
+  response_map = (event_map_t*)calloc(max_message_keys, sizeof(event_map_t));
+
+  if (response_map == NULL) {
+    //TODO handle error
+    printf("ERROR: callor of response map");
+    exit(1);
+  }
+  
   // set NULL to know later if they have been set or not
   on_join = NULL;
   on_leave = NULL;
 }
 
+// TODO do something lol
 WebSocket::~WebSocket() {
   //server_addr = NULL; // prevents old info from being saved
   //close(socket_fd);
@@ -53,6 +64,24 @@ int WebSocket::broadcast( int key, int option, std::string message ) {
   }
 }
 
+int WebSocket::setEvent(int key, void (*callbackFunction)(char*)) {
+  response_map[key] = callbackFunction;
+  return 0;
+  // error check TODO
+}
+
+int WebSocket::setJoinEvent(void (*callbackFunction)(int)) {
+  on_join = callbackFunction;
+  return 0;
+  // TODO error check
+}
+
+int WebSocket::setLeaveEvent(void (*callbackFunction)(int)) {
+  on_leave = callbackFunction;
+  return 0;
+  // TODO error check
+}
+
 void WebSocket::messageThread( ) {
 
   printf("message thread started\n");
@@ -67,14 +96,17 @@ void WebSocket::messageThread( ) {
   int message_key;
   char *end_ptr;
 
+  // Daemon of waiting for a broadcast
   for(;;) {
     memset(&message_buffer_in, 0, MAX_MESSAGE_BUFFER);
     status = recvfrom(socket_fd, message_buffer_in, MAX_MESSAGE_BUFFER, 0, NULL, NULL);
+
     // 0 is used for when server closes... server should always return at least 1 byte
     if (status <= 0) {
       printf("recvfrom() ERROR\n");
       close(socket_fd);
       return;
+
     } else {
 
       // Parse message and validate
@@ -93,7 +125,7 @@ void WebSocket::messageThread( ) {
       // -2 key reserved for leave
       if (message_key == -1) {
 
-	if (*on_join == NULL)  continue; } // on_join not set
+	if (*on_join == NULL) { continue; } // on_join not set
 	
 	int uid = strtol(message_body, &end_ptr, 10);
 	if (errno == ERANGE || message_key_token == end_ptr || uid < 0) {
@@ -108,7 +140,7 @@ void WebSocket::messageThread( ) {
 	
       } else if (message_key == -2) {
 
-      	if (*on_leave == NULL)  continue; } // on_leave not set
+	if (*on_leave == NULL) { continue; } // on_leave not set
 
 	int uid = strtol(message_body, &end_ptr, 10);
 	if (errno == ERANGE || message_key_token == end_ptr || uid < 0) {
@@ -121,29 +153,17 @@ void WebSocket::messageThread( ) {
 	}
 	
       } else if (message_key >= 0 && message_key < max_message_keys ) { 
+
+	// message key valid, now check if event is set
+	if (response_map[message_key] == 0) {
+	  printf("no map key set");
+	} else {
 	  response_map[message_key](message_body);
+	}
       }
       
       //      printf("TEST: key: %d\nbody: %s", message_key, message_body);
-      
-    }
+
+    } // Status >= 0 
   } // infinite for loop
-}
-
-int WebSocket::setEvent(int key, void (*callbackFunction)(char*)) {
-  response_map[key] = callbackFunction;
-  return 0;
-  // error check TODO
-}
-
-int WebSocket::setJoinEvent(void (*callbackFunction)(int)) {
-  on_join = callbackFunction;
-  return 0;
-  // TODO error check
-}
-
-int WebSocket::setLeaveEvent(void (*callbackFunction)(int)) {
-  on_leave = callbackFunction;
-  return 0;
-  // TODO error check
-}
+} // messageThread()

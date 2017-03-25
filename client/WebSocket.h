@@ -23,7 +23,8 @@ class WebSocket {
  public:
     
     // Constructor and destructor
-    WebSocket();
+    WebSocket(int message_keys = 16);
+    
     ~WebSocket();
 
     // used to setup and connect to server
@@ -50,7 +51,7 @@ class WebSocket {
     
  private:
 
-    event_map_t response_map[16]; // TODO, allocate during construction
+    event_map_t* response_map;    // array map of event callbacks
     void (*on_join)(int);	  // when key == -1 
     void (*on_leave)(int);        // when key == -2
     
