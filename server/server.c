@@ -19,7 +19,7 @@
 #define MAX_CLIENTS 16
 #define DEFAULT_PORT 5000
 #define MAX_MESSAGE_BUFFER 1024
-#define MAX_MESSAGE_KEYS 16
+#define DEFAULT_MAX_KEYS 16
 
 static unsigned int client_count = 0; // Global client count
 static int uid = 10;
@@ -31,8 +31,10 @@ pthread_mutex_t message_map_lock;
 struct arguments {
   uint8_t VERBOSE;
   uint16_t PORT; // Default port
+  uint16_t MAX_KEYS; // Defauly max key
 };
-  
+
+struct arguments arguments;
 // Client structure
 typedef struct {
   struct sockaddr_in addr; // Client remote address
@@ -58,8 +60,9 @@ static char args_doc[] = "TODO";
 
 // The options we understand
 static struct argp_option options[] = {
-  {"verbose",  'v', 0,      0,  "Produce verbose output" },
-  {"port",     'p', "PORT", 0,  "Port to use [Default: 5000]" },
+  {"verbose",  'v', 0,      0,   "Produce verbose output" },
+  {"port",     'p', "PORT", 0,   "Port to use [Default: 5000]" },
+  {"keys",     'k', "MAX_KEYS",0,"Max number of protocol message keys to map" },
   { 0 }
 };
 
@@ -77,6 +80,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
     case 'p':
       arguments->PORT = atoi(arg);
       if (arguments->PORT <= 1024) { error("Invalid Port, needs to be 1024 - 65535"); }
+      break;
+    case 'k':
+      arguments->MAX_KEYS = atoi(arg);
       break;
  /*
     case ARGP_KEY_ARG:
@@ -239,9 +245,17 @@ void *handle_client(void *arg){
     
     message_key = strtol(message_key_token, &end_ptr, 10);
     printf("message_key: %d\n", message_key);
-    if (errno == ERANGE || message_key_token == end_ptr || message_key < 0 || message_key > MAX_MESSAGE_KEYS) {
-      sprintf(buffer_out, "Invalid message map key\nshould be between 0 and %d", MAX_MESSAGE_KEYS);
+    printf("MAX_KEYS: %d\n", arguments.MAX_KEYS);
+    if (errno == ERANGE || message_key_token == end_ptr) {
+      sprintf(buffer_out, "Invalid message map key as int\n");
       send_message_self(buffer_out, cli->connect_fd);
+      printf("message key not an int");
+      continue;
+      
+    } else if (message_key < 0 || message_key > arguments.MAX_KEYS) {
+      sprintf(buffer_out, "Invalid message map key range, should be between 0 and %d", arguments.MAX_KEYS);
+      send_message_self(buffer_out, cli->connect_fd);
+      printf("out of message key range");
       continue; 
     }
 
@@ -288,7 +302,6 @@ int main(int argc, char *argv[]){
   struct sockaddr_in client_addr;
   pthread_t tid;
   socklen_t client_size = sizeof(client_addr);
-  struct arguments arguments;
   int i; // for loop var
   
   ///////////
@@ -298,13 +311,14 @@ int main(int argc, char *argv[]){
   // Default values
   arguments.VERBOSE = 0;
   arguments.PORT = DEFAULT_PORT;
+  arguments.MAX_KEYS = DEFAULT_MAX_KEYS;
   
   argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
   // Allocate the message map
-  message_map = malloc( MAX_MESSAGE_KEYS * sizeof(char*) );
+  message_map = malloc( arguments.MAX_KEYS * sizeof(char*) );
   if (message_map == NULL) { error("Failed to allocate the message_map"); }
-  for (i = 0 ; i < MAX_MESSAGE_KEYS ; i++) {
+  for (i = 0 ; i < arguments.MAX_KEYS ; i++) {
     message_map[i] = malloc( MAX_MESSAGE_BUFFER * sizeof(char) );
     if (message_map[i] == NULL) { error("Failed to allocate the message_map"); }
     *message_map[i] = (char) 0; // so we know if its the first time someone is writing to value

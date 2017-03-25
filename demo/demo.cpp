@@ -18,13 +18,18 @@ void on_new_test(char* body) {
 void onJoin(int uid){ printf("Join: %d\n", uid); }
 void onLeave(int uid){ printf("Leave: %d\n", uid); }
 
-int main() {
+int main(int argc, char* argv[]) {
 
+  if (argc < 3) {
+    printf("\n/demo <ip> <port>\n\n");
+    exit(1);
+  }
+  
   WebSocket client_socket;
   
   cout << "START" << endl;
 
-  client_socket.connectSocket("192.168.1.105", 5000);
+  client_socket.connectSocket(argv[1], atoi(argv[2]));
 
   client_socket.setEvent(1, on_new_type);
   client_socket.setEvent(2, on_new_color);

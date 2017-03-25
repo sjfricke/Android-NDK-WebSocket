@@ -114,10 +114,15 @@ void WebSocket::messageThread( ) {
       message_body = strtok(NULL, "\0");
 
       message_key = strtol(message_key_token, &end_ptr, 10);
-      if (errno == ERANGE || message_key_token == end_ptr || message_key < -2 || message_key > max_message_keys) {
+      printf("message_key_token:%s\n", message_key_token);
+      if (errno == ERANGE || message_key_token == end_ptr ) {
 	// if key_token == end_ptr means its empty
+	printf("TODO: invalid int passed for key\n");
+	continue;
+	
+      } else if (message_key < -2 || message_key > max_message_keys) {
 	// message_key can be -1/-2 for join/leave ack
-	printf("TODO: Invalid receive message\n");
+	printf("TODO: Invalid message key range\n");
 	continue; 
       }
 
@@ -156,7 +161,7 @@ void WebSocket::messageThread( ) {
 
 	// message key valid, now check if event is set
 	if (response_map[message_key] == 0) {
-	  printf("no map key set");
+	  printf("no map key set\n");
 	} else {
 	  response_map[message_key](message_body);
 	}
