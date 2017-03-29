@@ -72,6 +72,7 @@ The client side is a single .cpp file and header that can be added to your CMake
   * `mySocket.connectSocket( "IP Address", PORT_NUMBER, MAX_KEYS );`
   * An example with the server on a `192.168.1.100` and port `5000` allowing only 16 event keys
 	* `mySocket.connectSocket( "192.168.1.100", 5000, 16 );`
+* **NOTE::** Make sure you have included `<uses-permission android:name="android.permission.INTERNET" />` to your AndroidManifest.xml file or it won't connect
 
 #### Broadcast message to others
 * The broadcast takes three parameters
