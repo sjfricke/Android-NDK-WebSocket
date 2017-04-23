@@ -18,7 +18,7 @@
 
 #define MAX_CLIENTS 16
 #define DEFAULT_PORT 5000
-#define MAX_MESSAGE_BUFFER 1024
+#define MAX_MESSAGE_BUFFER 65536
 #define DEFAULT_MAX_KEYS 16
 
 static unsigned int client_count = 0; // Global client count
@@ -245,21 +245,23 @@ void *handle_client(void *arg) {
     // Ignore empty buffer
     if( strlen(buffer_in) <= 1 ) { continue; }
     if (arguments.VERBOSE) { printf("\nbuffer_in length: %d\n",(int)strlen(buffer_in)); }
+
+    printf("Buffer: %s\n", buffer_in);
     
     message_key_token = strtok(buffer_in, "\n"); // gets int key value
     message_options = strtok(NULL, "\n"); // gets options
     message_body = strtok (NULL, "\0"); // gets actual message value
     
-    if (arguments.VERBOSE) { printf("key_token: %s\n", message_key_token); }
-    if (arguments.VERBOSE) { printf("option: %s\n", message_options); }
-    if (arguments.VERBOSE) { printf("body: %s\n", message_body); }
+    //if (arguments.VERBOSE) { printf("key_token: %s\n", message_key_token); }
+    //if (arguments.VERBOSE) { printf("option: %s\n", message_options); }
+    //if (arguments.VERBOSE) { printf("body: %s\n", message_body); }
 
     // TODO: can strtol handle if its NULL already cause this check is redundent
     //if (message_key_token == NULL) {  }
     
     message_key = strtol(message_key_token, &end_ptr, 10);
-    if (arguments.VERBOSE) { printf("message_key: %d\n", message_key);}
-    if (arguments.VERBOSE) { printf("MAX_KEYS: %d\n", arguments.MAX_KEYS);}
+    //if (arguments.VERBOSE) { printf("message_key: %d\n", message_key);}
+    //if (arguments.VERBOSE) { printf("MAX_KEYS: %d\n", arguments.MAX_KEYS);}
     
     if (errno == ERANGE || message_key_token == end_ptr) {
       sprintf(buffer_out, "Invalid message map key as int\n");
