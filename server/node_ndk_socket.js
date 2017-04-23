@@ -1,5 +1,6 @@
 const PORT = 6419;
 const VERBOSE = false;
+const SCALE = 25;
 var key = "";
 var option = "";
 var value = "";
@@ -63,11 +64,12 @@ var server = net.createServer( (connection) => {
 		for (let i = 0; i < points.length; i++) {
 		    let point = points[i].split("/");
 		    
-		    x_f = parseFloat(point[0]);
-		    y_f = parseFloat(point[1]);
-		    z_f = parseFloat(point[2]);
+		    x_f = parseFloat(point[0]) * SCALE;
+		    y_f = parseFloat(point[1]) * SCALE;
+		    z_f = parseFloat(point[2]) * SCALE;
 
-		    if (x_f == null || y_f == null || z_f == null ) { continue; } //skip if invalid
+		    if (x_f == null || y_f == null || z_f == null ||
+		        x_f == NaN  || y_f == NaN  || z_f == NaN ) { continue; } //skip if invalid
 
 		    vec.push( { "x" : x_f, "y" : y_f, "z" : z_f } );
 		}
