@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
 
   client_socket.setEvent(1, on_new_type);
   client_socket.setEvent(2, on_new_color);
+  client_socket.setEvent(3, on_new_test);
   client_socket.setJoinEvent(onJoin);
   client_socket.setLeaveEvent(onLeave);
   
@@ -47,7 +48,6 @@ int main(int argc, char* argv[]) {
     n = atoi(s.c_str());
 
     if (n == 5){
-        client_socket.setEvent(3, on_new_test);
 	continue;
     } else if (n != -1) {
       client_socket.broadcast(n, 0, p);
